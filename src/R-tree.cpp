@@ -23,17 +23,16 @@ void RTreeNode<N>::removeChild(RTreeNode<N> *child)
     }
 }
 
-template <size_t N> 
+template <size_t N>
 RTree<N>::RTree(size_t _maxNodeSize) : maxNodeSize(_maxNodeSize), root(nullptr)
 {
 }
 template <size_t N>
 void RTree<N>::insert(const Rectangle<N> &rect)
 {
-    if (!root)
+    if (!root) // 第一次插入时，根节点为空，先创建根节点再插入数据
         root = new RTreeNode<N>(rect);
-    else
-        insertHelper(root, rect);
+    insertHelper(root, rect);
 }
 template <size_t N>
 void RTree<N>::insertHelper(RTreeNode<N> *node, const Rectangle<N> &rect)
@@ -44,8 +43,9 @@ void RTree<N>::insertHelper(RTreeNode<N> *node, const Rectangle<N> &rect)
         node->data.push_back(rect);
         if (node->data.size() > maxNodeSize)
         {
-            // 分裂？？？应该需要改一下
+            // 分裂
             splitNode(node);
+            return;
         }
     }
     else // 有两层的情况，第一次分裂发生后只会进入该分支
@@ -65,35 +65,68 @@ void RTree<N>::insertHelper(RTreeNode<N> *node, const Rectangle<N> &rect)
         }
         insertHelper(bestChild, rect);
     }
+    updateNodeRect(node); // 插入数据后更新节点范围，这是不需要分裂的情况
 }
 
 template <size_t N>
 void RTree<N>::splitNode(RTreeNode<N> *node)
 {
-    // 选择分裂轴
+    // 选择分裂轴，以中间位置作为分裂位置，创建新的节点
     size_t splitAxis = chooseSplitAxis(node);
-    // 根据分裂轴对数据集进行排序
-    sort(node->data.begin(), node->data.end(), [splitAxis](const Rectangle<N> &a, const Rectangle<N> &b)
-         { return a.minCoordinates[splitAxis] < b.minCoordinates[splitAxis]; });
-    // 以中间位置作为分裂位置
     size_t splitIndex = node->data.size() / 2;
-    // 创建新的节点并分配数据项
-    RTreeNode<N> *newNode = new RTreeNode<N>(Rectangle<N>(node->data[splitIndex].minCoordinates, node->data[splitIndex].maxCoordinates), node->parent);
-    for (size_t i = splitIndex; i < node->data.size(); i++)
+    RTreeNode<N> *newNode = new RTreeNode<N>(Rectangle<N>(node->data[0].minCoordinates, node->data[0].maxCoordinates), node->parent);
+    // 由于叶子节点和非叶子节点的分裂不太一样，需要分别处理
+    vector<pair<Rectangle<N>, RTreeNode<N> *>> data_children;
+    if (!node->children.empty()) // 非叶子节点
     {
-        newNode->data.push_back(node->data[i]);
-    }
-    // 更新node节点的数据项列表
-    node->data.erase(node->data.begin(), node->data.end());
-    for (size_t i = 0; i < splitIndex; i++)
-    {
-        node->data.push_back(node->data[i]); // 写错了，边写边改是什么鬼？？
-    }
-    // 更新node节点的范围
-    updateNodeRect(node);
-    // 更新新节点的范围
-    updateNodeRect(newNode);
+        for (size_t i = 0; i < node->data.size(); i++)
+        {
+            data_children.push_back(make_pair(node->data[i], node->children[i]));
+        }
+        // 根据分裂轴对数据集进行排序
+        sort(data_children.begin(), data_children.end(), [splitAxis](const pair<Rectangle<N>, RTreeNode<N> *> &a, const pair<Rectangle<N>, RTreeNode<N> *> &b)
+             { return a.first.minCoordinates[splitAxis] < b.first.minCoordinates[splitAxis]; });
 
+        // 为新的节点分配数据项
+        for (size_t i = 0; i < data_children.size(); i++)
+        {
+            newNode->data.push_back(data_children[i].first);
+            newNode->children.push_back(data_children[i].second);
+        }
+        // 更新node节点的数据项列表
+        node->data.clear();
+        node->children.clear();
+        for (size_t i = 0; i < splitIndex; i++)
+        {
+            node->data.push_back(newNode->data[i]);
+            node->children.push_back(newNode->children[i]);
+        }
+        newNode->data.erase(newNode->data.begin(), newNode->data.begin() + splitIndex - 1);
+        newNode->children.erase(newNode->children.begin(), newNode->children.begin() + splitIndex - 1);
+    }
+    else
+    {
+        // 根据分裂轴对数据集进行排序
+        sort(node->data.begin(), node->data.end(), [splitAxis](const Rectangle<N> &a, const Rectangle<N> &b)
+             { return a.minCoordinates[splitAxis] < b.minCoordinates[splitAxis]; });
+
+        // 为新的节点分配数据项
+        for (size_t i = 0; i < node->data.size(); i++)
+        {
+            newNode->data.push_back(node->data[i]);
+        }
+        // 更新node节点的数据项列表
+        node->data.clear();
+        for (size_t i = 0; i < splitIndex; i++)
+        {
+            node->data.push_back(newNode->data[i]);
+        }
+        newNode->data.erase(newNode->data.begin(), newNode->data.begin() + splitIndex - 1);
+    }
+
+    // 更新节点的范围
+    updateNodeRect(node);
+    updateNodeRect(newNode);
     // 如果node节点为root节点，则创建新的节点，并设为根节点
     if (!node->parent)
     {
@@ -108,6 +141,7 @@ void RTree<N>::splitNode(RTreeNode<N> *node)
     else // 更新父节点的子节点列表
     {
         // 此处要考虑父节点是否会分裂
+        node->parent->addChild(newNode);
         // 叶子节点的分裂和非叶子节点不同？？？？？
         if (node->parent->children.size() > maxNodeSize)
         {
@@ -198,9 +232,10 @@ void RTree<N>::updateNodeRect(RTreeNode<N> *node)
         }
     }
     // 根据data计算新的范围
-    // minCoords,maxCoords初值应该为最小值才行???????
     array<double, N> minCoords;
     array<double, N> maxCoords;
+    minCoords.fill(numeric_limits<double>::max()); // 初值应该为最大
+    maxCoords.fill(numeric_limits<double>::min()); // 初值应该为最小
     for (Rectangle<N> rect : node->data)
     {
         for (size_t i = 0; i < N; i++)
@@ -216,20 +251,20 @@ template <size_t N>
 vector<Rectangle<N>> RTree<N>::search(const Rectangle<N> &queryRect)
 {
     vector<Rectangle<N>> result;
-    searchHelper(root, queryRect, result);
+    vector<RTreeNode<N> *> nodeQueue;
+    searchHelper(root, queryRect, result, nodeQueue);
     return result;
 }
 template <size_t N>
-void RTree<N>::searchHelper(RTreeNode<N> *node, const Rectangle<N> &queryRect, vector<Rectangle<N>> &result)
+void RTree<N>::searchHelper(RTreeNode<N> *node, const Rectangle<N> &queryRect, vector<Rectangle<N>> &result, vector<RTreeNode<N> *> &nodeQueue)
 {
     if (!node)
         return;
-    if (intersects(node->rect, queryRect) && intersects(queryRect, node->rect))
+    if (intersects(node->rect, queryRect))
     {
-        vector<RTreeNode<N> *> nodeQueue;
         for (size_t i = 0; i < node->data.size(); i++)
         {
-            if (intersects(queryRect, node->data[i]) && intersects(node->data[i], queryRect))
+            if (intersects(node->data[i], queryRect))
             {
                 // 如果是node是叶子节点，将结果存入result
                 if (node->children.empty())
@@ -243,7 +278,7 @@ void RTree<N>::searchHelper(RTreeNode<N> *node, const Rectangle<N> &queryRect, v
         {
             RTreeNode<N> *temp = nodeQueue[0];
             nodeQueue.erase(nodeQueue.begin());
-            searchHelper(temp, queryRect, result);
+            searchHelper(temp, queryRect, result, nodeQueue);
         }
     }
     if (node->children.empty())
@@ -253,9 +288,9 @@ void RTree<N>::searchHelper(RTreeNode<N> *node, const Rectangle<N> &queryRect, v
 template <size_t N>
 bool RTree<N>::intersects(const Rectangle<N> &rect1, const Rectangle<N> &rect2)
 {
-    for (size_t i = 0; i < N; ++i)
+    for (size_t i = 0; i < N; i++)
     {
-        if (rect1.maxCoordinates[i] < rect2.minCoordinates[i] || rect1.minCoordinates[i] > rect2.maxCoordinates[i])
+        if (rect1.maxCoordinates[i] < rect2.minCoordinates[i] || rect1.maxCoordinates[i] < rect2.maxCoordinates[i] || rect1.minCoordinates[i] > rect2.maxCoordinates[i] || rect1.minCoordinates[i] > rect2.minCoordinates[i])
         {
             return false;
         }

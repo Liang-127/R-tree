@@ -5,11 +5,11 @@
 using namespace std;
 
 const size_t dimension = 3;   // 数据的维数
-const size_t MaxNodeSize = 3; // 子节点的最大数
+const size_t MaxNodeSize = 110; // 子节点的最大数
 
 int main()
 {
-    RTree<MaxNodeSize> rtree(MaxNodeSize); // 创建一个三维R树，每个节点最多存储4个数据项
+    RTree<dimension> rtree(MaxNodeSize); // 创建一个dimension维R树,每个节点最大容量为MaxNodeSize
     // 读取并插入高维数据对象
     freopen("data\\data.txt", "r", stdin);
     int data_num;
@@ -25,7 +25,7 @@ int main()
         rtree.insert(Rectangle<dimension>(temp_arr1, temp_arr2));
     }
     // 范围查询
-    Rectangle<3> queryRect({8, 60, 80}, {8, 60, 80});
+    Rectangle<3> queryRect({80, 49, 45}, {86, 50, 71});
     vector<Rectangle<3>> result = rtree.search(queryRect);
     cout << "Search result:" << endl;
     for (const Rectangle<3> &rect : result)
@@ -37,8 +37,7 @@ int main()
             if (i < 2)
                 cout << ",";
         }
-        cout << ")" << endl
-             << "(";
+        cout << ")" << ' ' << "(";
         for (size_t i = 0; i < 3; ++i)
         {
             cout << rect.maxCoordinates[i];

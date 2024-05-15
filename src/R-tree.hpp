@@ -78,7 +78,7 @@ public:
 
     // 搜索数据
     vector<Rectangle<N>> search(const Rectangle<N> &queryRect);
-    void searchHelper(RTreeNode<N> *node, const Rectangle<N> &queryRect, vector<Rectangle<N>> &result);
+    void searchHelper(RTreeNode<N> *node, const Rectangle<N> &queryRect, vector<Rectangle<N>> &result, vector<RTreeNode<N> *> &nodeQueue);
 
     // 判断两个矩形是否有包含关系
     bool intersects(const Rectangle<N> &rect1, const Rectangle<N> &rect2);
