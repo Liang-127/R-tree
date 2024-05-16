@@ -27,21 +27,22 @@ int main()
     // 范围查询
     Rectangle<3> queryRect({80, 49, 45}, {86, 50, 71});
     vector<Rectangle<3>> result = rtree.search(queryRect);
+    //输出结果
     cout << "Search result:" << endl;
     for (const Rectangle<3> &rect : result)
     {
         cout << "(";
-        for (size_t i = 0; i < 3; ++i)
+        for (size_t i = 0; i < dimension; ++i)
         {
             cout << rect.minCoordinates[i];
-            if (i < 2)
+            if (i < dimension-1)
                 cout << ",";
         }
         cout << ")" << ' ' << "(";
-        for (size_t i = 0; i < 3; ++i)
+        for (size_t i = 0; i < dimension; ++i)
         {
             cout << rect.maxCoordinates[i];
-            if (i < 2)
+            if (i < dimension-1)
                 cout << ",";
         }
         cout << ")" << endl;
