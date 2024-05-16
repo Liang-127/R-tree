@@ -1,12 +1,12 @@
 #include <iostream>
 
 using namespace std;
-//
-const int data_num = 10000;
-const int data_dimension = 3;
-const int count = 10;
-const int max_range = 47;
-const int max_increment = 97;
+
+const int data_num = 1;
+const int data_dimension = 2;
+const int count = 1000; 
+const int max_range = 50;
+const int max_increment = 100;
 int main()
 {
     freopen("data/data.txt", "w", stdout);
@@ -19,10 +19,9 @@ int main()
         int *increment = (int *)malloc(sizeof(int) * data_dimension);
         for (int i = 0; i < data_dimension; i++)
         {
-            range[i] = rand() % max_range+1;
+            range[i] = rand() % max_range + 1;
             increment[i] = rand() % max_increment;
         }
-
         // 随机生成该轮次的数据
         for (int i = 0; i < data_num; i++)
         {
@@ -36,9 +35,7 @@ int main()
                     k--;
             }
             for (int j = 0; j < data_dimension * 2; j++)
-            {
                 cout << temp[j] << ' ';
-            }
             cout << endl;
         }
     }
