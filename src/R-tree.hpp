@@ -10,14 +10,6 @@
 
 using namespace std;
 
-// 定义高维空间的点
-template <size_t N>
-struct Point
-{
-    array<double, N> coordinates;
-    Point(const array<double, N> &_coordinates) : coordinates(_coordinates) {}
-};
-
 // 使用两个点定义高维空间的矩形
 template <size_t N> // 数据维数
 struct Rectangle
